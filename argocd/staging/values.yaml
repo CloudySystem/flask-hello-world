@@ -2,4 +2,4 @@ flask-hello-world:
   environment: staging
   image:
     repository: cloudysystem/flask-hello-world
-    tag: latest
+    tag: 8b5995857360020c7ddc05c35576b265656c49d6
