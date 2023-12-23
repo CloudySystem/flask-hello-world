@@ -2,4 +2,4 @@ flask-hello-world:
   environment: production
   image:
     repository: cloudysystem/flask-hello-world
-    tag: v1.0.0
+    tag: v1.1.0
