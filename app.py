@@ -18,5 +18,9 @@ def hello_world():
 </html>
 '''
 
+@app.route('/ping')
+def pong():
+    return 'pong'
+
 if __name__ == "__main__":
     app.run(debug=True)
