@@ -1,0 +1,8 @@
+apiVersion: v2
+name: staging-app
+description: A Helm chart for KubeOps Challenge
+version: 0.1.0
+dependencies:
+  - name: flask-hello-world
+    repository: file://../../.chart
+    version: 0.1.0

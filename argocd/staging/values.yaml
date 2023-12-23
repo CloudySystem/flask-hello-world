@@ -1,0 +1,5 @@
+flask-hello-world:
+  environment: staging
+  image:
+    repository: cloudysystem/flask-hello-world
+    tag: latest

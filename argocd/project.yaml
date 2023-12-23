@@ -1,0 +1,13 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: flask-hello-world
+  namespace: argocd
+spec:
+  sourceRepos:
+    - 'https://github.com/CloudySystem/flask-hello-world'
+  destinations:
+    - server: https://kubernetes.default.svc
+      name: minikube
+      namespace: default

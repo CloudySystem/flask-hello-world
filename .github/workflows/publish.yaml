@@ -1,0 +1,81 @@
+name: publish
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/flask-hello-world
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Configure QEMU for multiarch images
+      uses: docker/setup-qemu-action@v1
+    
+    - name: Configure Docker Buildx for multiarch images
+      uses: docker/setup-buildx-action@v1
+
+    - name: Staging | Build and push Docker image
+      if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/v')
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest,
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        platforms: linux/amd64,linux/arm64
+
+    - name: Staging | Commit and push updated Helm chart
+      if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/v')
+      run: |
+        sed -i 's|tag: .*|tag: '${{ github.sha }}'|g' argocd/staging/values.yaml
+        sed -i 's|appVersion: .*|appVersion: '${{ github.sha }}'|g' argocd/staging/values.yaml
+        git config --local user.email "chartversionupdater@gmail.com"
+        git config --local user.name "Chart Version Updater"
+        git add argocd/staging
+        git commit -m "Update Staging Helm Chart to version ${{ github.sha }}"
+        git push origin HEAD:main --force
+
+    - name: Production | Extract metadata tags for Docker Image
+      id: meta
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+    - name: Production | Build and push Docker image
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        platforms: linux/amd64,linux/arm64
+
+    - name: Production | Commit and push updated Helm chart
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      run: |
+        sed -i 's|tag: .*|tag: '${{ steps.meta.outputs.version }}'|g' argocd/production/values.yaml
+        sed -i 's|appVersion: .*|appVersion: '${{ steps.meta.outputs.version }}'|g' argocd/production/values.yaml
+        git config --local user.email "chartversionupdater@gmail.com"
+        git config --local user.name "Chart Version Updater"
+        git add argocd/production
+        git commit -m "Update Production Helm Chart to version ${{ steps.meta.outputs.version }}"
+        git push origin HEAD:main --force
